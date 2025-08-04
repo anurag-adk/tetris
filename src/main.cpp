@@ -675,7 +675,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             case GLFW_KEY_W:
                 game->rotate();
                 break;
-            case GLFW_KEY_SPACE:
+            case GLFW_KEY_ENTER:
                 game->drop();
                 break;
             case GLFW_KEY_R:
@@ -736,7 +736,7 @@ int main() {
     std::cout << "D/Right Arrow - Move Right" << std::endl;
     std::cout << "S/Down Arrow  - Soft Drop" << std::endl;
     std::cout << "W/Up Arrow    - Rotate" << std::endl;
-    std::cout << "Space         - Hard Drop" << std::endl;
+    std::cout << "Enter         - Hard Drop" << std::endl;
     std::cout << "R             - Restart (when game over)" << std::endl;
     std::cout << "ESC           - Exit" << std::endl;
     
