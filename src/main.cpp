@@ -12,7 +12,9 @@ const int BOARD_WIDTH = 10;
 const int BOARD_HEIGHT = 20;
 const int BLOCK_SIZE = 30;
 const int WINDOW_WIDTH = 800;
-const int WINDOW_HEIGHT = 600;
+const int WINDOW_HEIGHT = 700;
+const int BOARD_OFFSET_X = 100;  // Offset from left edge
+const int BOARD_OFFSET_Y = 50;   // Offset from bottom edge
 
 // Block Colors
 struct Color {
@@ -108,6 +110,7 @@ class TetrisGame {
 private:
     std::vector<std::vector<int>> board;
     TetrisPiece currentPiece;
+    TetrisPiece nextPiece;
     std::mt19937 rng;
     std::uniform_int_distribution<int> pieceDist;
     double lastFall;
@@ -121,9 +124,10 @@ private:
     
 public:
     TetrisGame() : board(BOARD_HEIGHT, std::vector<int>(BOARD_WIDTH, 0)),
-                   currentPiece(0), rng(std::chrono::steady_clock::now().time_since_epoch().count()),
+                   currentPiece(0), nextPiece(0), rng(std::chrono::steady_clock::now().time_since_epoch().count()),
                    pieceDist(0, 6), lastFall(0), fallSpeed(1.0), score(0), lines(0), gameOver(false) {
         spawnNewPiece();
+        generateNextPiece();
         initOpenGL();
     }
     
@@ -143,7 +147,7 @@ public:
             }
         )";
         
-        // Fragment shader source with enhanced bevel effect
+        // Fragment shader source with bevel effect
         const char* fragmentShaderSource = R"(
             #version 330 core
             out vec4 FragColor;
@@ -236,10 +240,15 @@ public:
     }
     
     void spawnNewPiece() {
-        currentPiece = TetrisPiece(pieceDist(rng));
+        currentPiece = nextPiece;
+        generateNextPiece();
         if (checkCollision(currentPiece, 0, 0)) {
             gameOver = true;
         }
+    }
+    
+    void generateNextPiece() {
+        nextPiece = TetrisPiece(pieceDist(rng));
     }
     
     bool checkCollision(const TetrisPiece& piece, int dx, int dy) {
@@ -361,14 +370,166 @@ public:
         gameOver = false;
         lastFall = glfwGetTime();
         spawnNewPiece();
+        generateNextPiece();
+    }
+    
+    void drawRect(float x, float y, float width, float height, const Color& color) {
+        glUseProgram(shaderProgram);
+        
+        GLint offsetLoc = glGetUniformLocation(shaderProgram, "offset");
+        glUniform2f(offsetLoc, x, y);
+        
+        GLint scaleLoc = glGetUniformLocation(shaderProgram, "scale");
+        glUniform2f(scaleLoc, width, height);
+        
+        GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+        glUniform4f(colorLoc, color.r, color.g, color.b, color.a);
+        
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    }
+    
+    void drawText(const std::string& text, float x, float y, float size, const Color& color) {
+        // Simple bitmap font rendering using rectangles for letters
+        float charWidth = size * 0.6f;
+        float charHeight = size;
+        float spacing = charWidth + 2;
+        
+        for (size_t i = 0; i < text.length(); i++) {
+            char c = text[i];
+            float charX = x + i * spacing;
+            
+            // Draw basic characters using rectangles (simplified font)
+            switch (c) {
+                case 'S':
+                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
+                    drawRect(charX, y + charHeight/2 - 1.5f, 3, charHeight/2 - 3, color); // left top
+                    drawRect(charX, y + charHeight/2 - 1.5f, charWidth, 3, color); // middle
+                    drawRect(charX + charWidth - 3, y, 3, charHeight/2 - 3, color); // right bottom
+                    drawRect(charX, y, charWidth, 3, color); // bottom
+                    break;
+                case 'C':
+                    drawRect(charX, y, charWidth, 3, color); // bottom
+                    drawRect(charX, y, 3, charHeight, color); // left
+                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
+                    break;
+                case 'O':
+                    drawRect(charX, y, 3, charHeight, color); // left
+                    drawRect(charX + charWidth - 3, y, 3, charHeight, color); // right
+                    drawRect(charX, y, charWidth, 3, color); // bottom
+                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
+                    break;
+                case 'R':
+                    drawRect(charX, y, 3, charHeight, color); // left
+                    drawRect(charX, y + charHeight - 3, charWidth - 3, 3, color); // top
+                    drawRect(charX + charWidth - 3, y + charHeight/2, 3, charHeight/2 - 3, color); // right top
+                    drawRect(charX, y + charHeight/2 - 1.5f, charWidth - 3, 3, color); // middle
+                    drawRect(charX + charWidth/2, y, 3, charHeight/2, color); // diagonal
+                    break;
+                case 'E':
+                    drawRect(charX, y, 3, charHeight, color); // left
+                    drawRect(charX, y, charWidth, 3, color); // bottom
+                    drawRect(charX, y + charHeight/2 - 1.5f, charWidth - 3, 3, color); // middle
+                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
+                    break;
+                case 'L':
+                    drawRect(charX, y, 3, charHeight, color); // left
+                    drawRect(charX, y, charWidth, 3, color); // bottom
+                    break;
+                case 'I':
+                    drawRect(charX, y, charWidth, 3, color); // bottom
+                    drawRect(charX + charWidth/2 - 1.5f, y, 3, charHeight, color); // middle
+                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
+                    break;
+                case 'N':
+                    drawRect(charX, y, 3, charHeight, color); // left
+                    drawRect(charX + charWidth - 3, y, 3, charHeight, color); // right
+                    drawRect(charX, y + charHeight/2, charWidth, 3, color); // diagonal (simplified)
+                    break;
+                case 'T':
+                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
+                    drawRect(charX + charWidth/2 - 1.5f, y, 3, charHeight, color); // middle
+                    break;
+                case 'H':
+                    drawRect(charX, y, 3, charHeight, color); // left
+                    drawRect(charX + charWidth - 3, y, 3, charHeight, color); // right
+                    drawRect(charX, y + charHeight/2 - 1.5f, charWidth, 3, color); // middle
+                    break;
+                case 'G':
+                    drawRect(charX, y, charWidth, 3, color); // bottom
+                    drawRect(charX, y, 3, charHeight, color); // left
+                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
+                    drawRect(charX + charWidth - 3, y, 3, charHeight/2, color); // right bottom
+                    drawRect(charX + charWidth/2, y + charHeight/2 - 1.5f, charWidth/2, 3, color); // middle right
+                    break;
+                case ' ':
+                    // Space - do nothing
+                    break;
+            }
+        }
+    }
+    
+    void drawDigit(int digit, float x, float y, float size, const Color& color) {
+        // Simple 7-segment display style digits using rectangles
+        float segWidth = size * 0.8f;
+        float segHeight = size * 0.1f;
+        float segThick = size * 0.15f;
+        
+        // Segment positions (7-segment display)
+        bool segments[10][7] = {
+            {1,1,1,1,1,1,0}, // 0
+            {0,1,1,0,0,0,0}, // 1
+            {1,1,0,1,1,0,1}, // 2
+            {1,1,1,1,0,0,1}, // 3
+            {0,1,1,0,0,1,1}, // 4
+            {1,0,1,1,0,1,1}, // 5
+            {1,0,1,1,1,1,1}, // 6
+            {1,1,1,0,0,0,0}, // 7
+            {1,1,1,1,1,1,1}, // 8
+            {1,1,1,1,0,1,1}  // 9
+        };
+        
+        if (digit < 0 || digit > 9) return;
+        
+        // Draw segments
+        if (segments[digit][0]) drawRect(x, y + size - segHeight, segWidth, segHeight, color); // top
+        if (segments[digit][1]) drawRect(x + segWidth - segThick, y + size/2, segThick, size/2 - segHeight/2, color); // top right
+        if (segments[digit][2]) drawRect(x + segWidth - segThick, y, segThick, size/2 - segHeight/2, color); // bottom right
+        if (segments[digit][3]) drawRect(x, y, segWidth, segHeight, color); // bottom
+        if (segments[digit][4]) drawRect(x, y, segThick, size/2 - segHeight/2, color); // bottom left
+        if (segments[digit][5]) drawRect(x, y + size/2, segThick, size/2 - segHeight/2, color); // top left
+        if (segments[digit][6]) drawRect(x, y + size/2 - segHeight/2, segWidth, segHeight, color); // middle
+    }
+    
+    void drawNumber(int number, float x, float y, float size, const Color& color) {
+        if (number == 0) {
+            drawDigit(0, x, y, size, color);
+            return;
+        }
+        
+        // Count digits
+        int temp = number;
+        int digits = 0;
+        while (temp > 0) {
+            temp /= 10;
+            digits++;
+        }
+        
+        // Draw digits from right to left
+        float digitSpacing = size * 0.9f;
+        for (int i = 0; i < digits; i++) {
+            int digit = number % 10;
+            drawDigit(digit, x + (digits - 1 - i) * digitSpacing, y, size, color);
+            number /= 10;
+        }
     }
     
     void drawBlock(int x, int y, const Color& color) {
         glUseProgram(shaderProgram);
         
-        // Calculate screen position
-        float screenX = x * BLOCK_SIZE + 50; // 50px offset from left
-        float screenY = (BOARD_HEIGHT - y - 1) * BLOCK_SIZE + 50; // 50px offset from bottom, flip Y
+        // Calculate screen position with proper offsets
+        float screenX = x * BLOCK_SIZE + BOARD_OFFSET_X;
+        float screenY = (BOARD_HEIGHT - y - 1) * BLOCK_SIZE + BOARD_OFFSET_Y;
         
         // Set uniforms
         GLint offsetLoc = glGetUniformLocation(shaderProgram, "offset");
@@ -386,9 +547,9 @@ public:
     
     void render() {
         glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Dark gray background
+        glClearColor(0.15f, 0.15f, 0.15f, 1.0f); // Darker background
         
-        // Draw the board
+        // Draw the game board
         for (int y = 0; y < BOARD_HEIGHT; y++) {
             for (int x = 0; x < BOARD_WIDTH; x++) {
                 if (board[y][x] != 0) {
@@ -412,27 +573,105 @@ public:
             }
         }
         
-        // Draw border
-        glUseProgram(shaderProgram);
-        GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
-        glUniform4f(colorLoc, 0.8f, 0.8f, 0.8f, 1.0f); // White border
+        // Draw game board border
+        Color borderColor(0.7f, 0.7f, 0.7f, 1.0f);
+        int borderThickness = 3;
         
-        // Left border
-        GLint offsetLoc = glGetUniformLocation(shaderProgram, "offset");
-        glUniform2f(offsetLoc, 45, 45);
-        GLint scaleLoc = glGetUniformLocation(shaderProgram, "scale");
-        glUniform2f(scaleLoc, 5, BOARD_HEIGHT * BLOCK_SIZE + 10);
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // Game board border
+        drawRect(BOARD_OFFSET_X - borderThickness, BOARD_OFFSET_Y - borderThickness, 
+                borderThickness, BOARD_HEIGHT * BLOCK_SIZE + 2 * borderThickness, borderColor);
+        drawRect(BOARD_OFFSET_X + BOARD_WIDTH * BLOCK_SIZE, BOARD_OFFSET_Y - borderThickness, 
+                borderThickness, BOARD_HEIGHT * BLOCK_SIZE + 2 * borderThickness, borderColor);
+        drawRect(BOARD_OFFSET_X - borderThickness, BOARD_OFFSET_Y - borderThickness, 
+                BOARD_WIDTH * BLOCK_SIZE + 2 * borderThickness, borderThickness, borderColor);
+        drawRect(BOARD_OFFSET_X - borderThickness, BOARD_OFFSET_Y + BOARD_HEIGHT * BLOCK_SIZE, 
+                BOARD_WIDTH * BLOCK_SIZE + 2 * borderThickness, borderThickness, borderColor);
         
-        // Right border
-        glUniform2f(offsetLoc, 50 + BOARD_WIDTH * BLOCK_SIZE, 45);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // UI Panel settings
+        float panelX = BOARD_OFFSET_X + BOARD_WIDTH * BLOCK_SIZE + 20;
+        float panelWidth = 180;
+        Color panelBg(0.25f, 0.25f, 0.25f, 1.0f);
+        Color panelBorder(0.6f, 0.6f, 0.6f, 1.0f);
+        Color textColor(0.9f, 0.9f, 0.9f, 1.0f);
+        Color numberColor(1.0f, 1.0f, 1.0f, 1.0f);
         
-        // Bottom border
-        glUniform2f(offsetLoc, 45, 45);
-        glUniform2f(scaleLoc, BOARD_WIDTH * BLOCK_SIZE + 10, 5);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // Next piece panel
+        float nextPanelY = BOARD_OFFSET_Y + BOARD_HEIGHT * BLOCK_SIZE - 120;
+        float nextPanelHeight = 100;
+        
+        drawRect(panelX, nextPanelY, panelWidth, nextPanelHeight, panelBg);
+        drawRect(panelX - 2, nextPanelY - 2, panelWidth + 4, nextPanelHeight + 4, panelBorder);
+        
+        // Draw "NEXT" title
+        drawText("NEXT", panelX + 10, nextPanelY + nextPanelHeight - 25, 16, textColor);
+        
+        // Draw next piece preview
+        float previewX = panelX + 60;
+        float previewY = nextPanelY + 20;
+        int previewSize = 15; // Smaller blocks for preview
+        
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                if (nextPiece.shape[i][j] != 0) {
+                    float blockX = previewX + j * previewSize;
+                    float blockY = previewY + (3 - i) * previewSize;
+                    
+                    // Draw preview block
+                    glUseProgram(shaderProgram);
+                    GLint offsetLoc = glGetUniformLocation(shaderProgram, "offset");
+                    glUniform2f(offsetLoc, blockX, blockY);
+                    GLint scaleLoc = glGetUniformLocation(shaderProgram, "scale");
+                    glUniform2f(scaleLoc, previewSize - 1, previewSize - 1);
+                    GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+                    Color previewColor = COLORS[nextPiece.shape[i][j]];
+                    glUniform4f(colorLoc, previewColor.r, previewColor.g, previewColor.b, previewColor.a);
+                    glBindVertexArray(VAO);
+                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                }
+            }
+        }
+        
+        // Score panel
+        float scorePanelY = nextPanelY - 130;
+        float scorePanelHeight = 80;
+        
+        drawRect(panelX, scorePanelY, panelWidth, scorePanelHeight, panelBg);
+        drawRect(panelX - 2, scorePanelY - 2, panelWidth + 4, scorePanelHeight + 4, panelBorder);
+        
+        drawText("SCORE", panelX + 10, scorePanelY + scorePanelHeight - 25, 16, textColor);
+        drawNumber(score, panelX + 20, scorePanelY + 15, 20, numberColor);
+        
+        // Lines panel
+        float linesPanelY = scorePanelY - 110;
+        float linesPanelHeight = 80;
+        
+        drawRect(panelX, linesPanelY, panelWidth, linesPanelHeight, panelBg);
+        drawRect(panelX - 2, linesPanelY - 2, panelWidth + 4, linesPanelHeight + 4, panelBorder);
+        
+        drawText("LINES", panelX + 10, linesPanelY + linesPanelHeight - 25, 16, textColor);
+        drawNumber(lines, panelX + 20, linesPanelY + 15, 20, numberColor);
+        
+        // Height panel (current piece height)
+        float heightPanelY = linesPanelY - 110;
+        float heightPanelHeight = 80;
+        
+        drawRect(panelX, heightPanelY, panelWidth, heightPanelHeight, panelBg);
+        drawRect(panelX - 2, heightPanelY - 2, panelWidth + 4, heightPanelHeight + 4, panelBorder);
+        
+        drawText("HEIGHT", panelX + 10, heightPanelY + heightPanelHeight - 25, 16, textColor);
+        
+        // Calculate current height (highest non-empty row)
+        int currentHeight = 0;
+        for (int y = 0; y < BOARD_HEIGHT; y++) {
+            for (int x = 0; x < BOARD_WIDTH; x++) {
+                if (board[y][x] != 0) {
+                    currentHeight = std::max(currentHeight, BOARD_HEIGHT - y);
+                    break;
+                }
+            }
+        }
+        
+        drawNumber(currentHeight, panelX + 20, heightPanelY + 15, 20, numberColor);
     }
     
     bool isGameOver() const { return gameOver; }
