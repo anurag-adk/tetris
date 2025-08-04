@@ -601,7 +601,7 @@ public:
 
         // Draw next piece preview (use block shader for blocks)
         float previewX = panelX + 60;
-        float previewY = nextPanelY + 25;
+        float previewY = nextPanelY + 4;
         int previewSize = 18;
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
@@ -632,7 +632,7 @@ public:
         drawRect(panelX + panelWidth - 3, scorePanelY, 3, scorePanelHeight, panelBorder); // Right
 
         drawText("SCORE", panelX + 10, scorePanelY + scorePanelHeight - 28, 18, textColor);
-        drawNumber(score, panelX + 20, scorePanelY + 18, 22, numberColor);
+        drawNumber(score, panelX + 20, scorePanelY + 12, 22, numberColor);
 
         // Lines panel
         float linesPanelY = scorePanelY - 90;
@@ -644,7 +644,7 @@ public:
         drawRect(panelX + panelWidth - 3, linesPanelY, 3, linesPanelHeight, panelBorder); // Right
 
         drawText("LINES", panelX + 10, linesPanelY + linesPanelHeight - 28, 18, textColor);
-        drawNumber(lines, panelX + 20, linesPanelY + 18, 22, numberColor);
+        drawNumber(lines, panelX + 20, linesPanelY + 12, 22, numberColor);
     }
     
     bool isGameOver() const { return gameOver; }
