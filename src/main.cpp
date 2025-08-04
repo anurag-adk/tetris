@@ -396,87 +396,75 @@ public:
     }
     
     void drawText(const std::string& text, float x, float y, float size, const Color& color) {
-        // Simple bitmap font rendering using rectangles for letters
-        float charWidth = size * 0.6f;
+        // Pixel-perfect bitmap font rendering like classic Tetris
+        float charWidth = size * 0.7f;
         float charHeight = size;
-        float spacing = charWidth + 2;
+        float spacing = charWidth + 3;
+        float strokeWidth = 3;
         
         for (size_t i = 0; i < text.length(); i++) {
             char c = text[i];
             float charX = x + i * spacing;
             
-            // Draw basic characters using rectangles (simplified font)
+            // Draw pixelated characters with clean, readable design
             switch (c) {
-                case 'S':
-                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
-                    drawRect(charX, y + charHeight/2 - 1.5f, 3, charHeight/2 - 3, color); // left top
-                    drawRect(charX, y + charHeight/2 - 1.5f, charWidth, 3, color); // middle
-                    drawRect(charX + charWidth - 3, y, 3, charHeight/2 - 3, color); // right bottom
-                    drawRect(charX, y, charWidth, 3, color); // bottom
-                    break;
-                case 'C':
-                    drawRect(charX, y, charWidth, 3, color); // bottom
-                    drawRect(charX, y, 3, charHeight, color); // left
-                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
-                    break;
-                case 'O':
-                    drawRect(charX, y, 3, charHeight, color); // left
-                    drawRect(charX + charWidth - 3, y, 3, charHeight, color); // right
-                    drawRect(charX, y, charWidth, 3, color); // bottom
-                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
-                    break;
-                case 'R':
-                    drawRect(charX, y, 3, charHeight, color); // left
-                    drawRect(charX, y + charHeight - 3, charWidth - 3, 3, color); // top
-                    drawRect(charX + charWidth - 3, y + charHeight/2, 3, charHeight/2 - 3, color); // right top
-                    drawRect(charX, y + charHeight/2 - 1.5f, charWidth - 3, 3, color); // middle
-                    drawRect(charX + charWidth/2, y, 3, charHeight/2, color); // diagonal
+                case 'N':
+                    drawRect(charX, y, strokeWidth, charHeight, color); // left
+                    drawRect(charX + charWidth - strokeWidth, y, strokeWidth, charHeight, color); // right
+                    drawRect(charX + strokeWidth, y + charHeight * 0.6f, charWidth - 2*strokeWidth, strokeWidth, color); // diagonal bar
                     break;
                 case 'E':
-                    drawRect(charX, y, 3, charHeight, color); // left
-                    drawRect(charX, y, charWidth, 3, color); // bottom
-                    drawRect(charX, y + charHeight/2 - 1.5f, charWidth - 3, 3, color); // middle
-                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
-                    break;
-                case 'L':
-                    drawRect(charX, y, 3, charHeight, color); // left
-                    drawRect(charX, y, charWidth, 3, color); // bottom
-                    break;
-                case 'I':
-                    drawRect(charX, y, charWidth, 3, color); // bottom
-                    drawRect(charX + charWidth/2 - 1.5f, y, 3, charHeight, color); // middle
-                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
-                    break;
-                case 'N':
-                    drawRect(charX, y, 3, charHeight, color); // left
-                    drawRect(charX + charWidth - 3, y, 3, charHeight, color); // right
-                    drawRect(charX, y + charHeight/2, charWidth, 3, color); // diagonal (simplified)
-                    break;
-                case 'T':
-                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
-                    drawRect(charX + charWidth/2 - 1.5f, y, 3, charHeight, color); // middle
-                    break;
-                case 'H':
-                    drawRect(charX, y, 3, charHeight, color); // left
-                    drawRect(charX + charWidth - 3, y, 3, charHeight, color); // right
-                    drawRect(charX, y + charHeight/2 - 1.5f, charWidth, 3, color); // middle
-                    break;
-                case 'G':
-                    drawRect(charX, y, charWidth, 3, color); // bottom
-                    drawRect(charX, y, 3, charHeight, color); // left
-                    drawRect(charX, y + charHeight - 3, charWidth, 3, color); // top
-                    drawRect(charX + charWidth - 3, y, 3, charHeight/2, color); // right bottom
-                    drawRect(charX + charWidth/2, y + charHeight/2 - 1.5f, charWidth/2, 3, color); // middle right
+                    drawRect(charX, y, strokeWidth, charHeight, color); // left
+                    drawRect(charX, y, charWidth, strokeWidth, color); // bottom
+                    drawRect(charX, y + charHeight/2 - strokeWidth/2, charWidth * 0.75f, strokeWidth, color); // middle
+                    drawRect(charX, y + charHeight - strokeWidth, charWidth, strokeWidth, color); // top
                     break;
                 case 'X':
-                    // Draw two diagonals for 'X'
-                    drawRect(charX, y, 3, charHeight, color); // left vertical (for thickness)
-                    drawRect(charX + charWidth - 3, y, 3, charHeight, color); // right vertical (for thickness)
-                    // Diagonal from top-left to bottom-right
-                    drawRect(charX + 2, y + 2, charWidth - 4, 3, color); // top
-                    drawRect(charX + 2, y + charHeight - 5, charWidth - 4, 3, color); // bottom
-                    // Central cross
-                    drawRect(charX + 2, y + charHeight/2 - 1.5f, charWidth - 4, 3, color); // middle
+                    drawRect(charX + strokeWidth, y + strokeWidth, charWidth - 2*strokeWidth, strokeWidth, color); // top diagonal
+                    drawRect(charX + strokeWidth, y + charHeight - 2*strokeWidth, charWidth - 2*strokeWidth, strokeWidth, color); // bottom diagonal
+                    drawRect(charX + charWidth/2 - strokeWidth/2, y + charHeight/2 - strokeWidth/2, strokeWidth, strokeWidth, color); // center
+                    drawRect(charX, y, strokeWidth, strokeWidth * 2, color); // top left
+                    drawRect(charX + charWidth - strokeWidth, y, strokeWidth, strokeWidth * 2, color); // top right
+                    drawRect(charX, y + charHeight - strokeWidth * 2, strokeWidth, strokeWidth * 2, color); // bottom left
+                    drawRect(charX + charWidth - strokeWidth, y + charHeight - strokeWidth * 2, strokeWidth, strokeWidth * 2, color); // bottom right
+                    break;
+                case 'T':
+                    drawRect(charX, y + charHeight - strokeWidth, charWidth, strokeWidth, color); // top
+                    drawRect(charX + charWidth/2 - strokeWidth/2, y, strokeWidth, charHeight, color); // middle vertical
+                    break;
+                case 'S':
+                    drawRect(charX, y + charHeight - strokeWidth, charWidth, strokeWidth, color); // top
+                    drawRect(charX, y + charHeight/2 - strokeWidth/2, charWidth, strokeWidth, color); // middle
+                    drawRect(charX, y, charWidth, strokeWidth, color); // bottom
+                    drawRect(charX, y + charHeight/2, strokeWidth, charHeight/2 - strokeWidth, color); // left top
+                    drawRect(charX + charWidth - strokeWidth, y + strokeWidth, strokeWidth, charHeight/2 - strokeWidth, color); // right bottom
+                    break;
+                case 'C':
+                    drawRect(charX, y + strokeWidth, strokeWidth, charHeight - 2*strokeWidth, color); // left
+                    drawRect(charX, y, charWidth, strokeWidth, color); // bottom
+                    drawRect(charX, y + charHeight - strokeWidth, charWidth, strokeWidth, color); // top
+                    break;
+                case 'O':
+                    drawRect(charX, y + strokeWidth, strokeWidth, charHeight - 2*strokeWidth, color); // left
+                    drawRect(charX + charWidth - strokeWidth, y + strokeWidth, strokeWidth, charHeight - 2*strokeWidth, color); // right
+                    drawRect(charX + strokeWidth, y, charWidth - 2*strokeWidth, strokeWidth, color); // bottom
+                    drawRect(charX + strokeWidth, y + charHeight - strokeWidth, charWidth - 2*strokeWidth, strokeWidth, color); // top
+                    break;
+                case 'R':
+                    drawRect(charX, y, strokeWidth, charHeight, color); // left
+                    drawRect(charX + strokeWidth, y + charHeight - strokeWidth, charWidth - strokeWidth, strokeWidth, color); // top
+                    drawRect(charX + charWidth - strokeWidth, y + charHeight/2, strokeWidth, charHeight/2 - strokeWidth, color); // right top
+                    drawRect(charX + strokeWidth, y + charHeight/2 - strokeWidth/2, charWidth - strokeWidth, strokeWidth, color); // middle
+                    drawRect(charX + charWidth/2, y, strokeWidth, charHeight/2, color); // diagonal
+                    break;
+                case 'L':
+                    drawRect(charX, y, strokeWidth, charHeight, color); // left
+                    drawRect(charX + strokeWidth, y, charWidth - strokeWidth, strokeWidth, color); // bottom
+                    break;
+                case 'I':
+                    drawRect(charX, y, charWidth, strokeWidth, color); // bottom
+                    drawRect(charX + charWidth/2 - strokeWidth/2, y, strokeWidth, charHeight, color); // middle vertical
+                    drawRect(charX, y + charHeight - strokeWidth, charWidth, strokeWidth, color); // top
                     break;
                 case ' ':
                     // Space - do nothing
