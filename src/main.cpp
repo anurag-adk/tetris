@@ -118,8 +118,9 @@ private:
     int score;
     int lines;
     bool gameOver;
-    
-    GLuint shaderProgram;
+
+    GLuint blockShaderProgram; // bevel effect for blocks
+    GLuint uiShaderProgram;    // plain color for UI
     GLuint VAO, VBO;
     
 public:
@@ -132,7 +133,7 @@ public:
     }
     
     void initOpenGL() {
-        // Vertex shader source
+        // Vertex shader source (shared)
         const char* vertexShaderSource = R"(
             #version 330 core
             layout (location = 0) in vec2 aPos;
@@ -146,97 +147,105 @@ public:
                 gl_Position = projection * vec4(pos, 0.0, 1.0);
             }
         )";
-        
-        // Fragment shader source with bevel effect
-        const char* fragmentShaderSource = R"(
+
+        // Fragment shader source with bevel effect (for blocks)
+        const char* blockFragmentShaderSource = R"(
             #version 330 core
             out vec4 FragColor;
             uniform vec4 color;
             in vec2 fragCoord;
             void main() {
-                // Enhanced bevel effect for retro look
                 vec2 pos = fragCoord;
                 float bevelWidth = 0.15;
                 float highlightIntensity = 1.4;
                 float shadowIntensity = 0.6;
-                
                 vec4 finalColor = color;
-                
-                // Create highlight on top and left edges
                 if (pos.y > 1.0 - bevelWidth || pos.x < bevelWidth) {
                     finalColor.rgb = min(finalColor.rgb * highlightIntensity, vec3(1.0));
-                }
-                // Create shadow on bottom and right edges
-                else if (pos.y < bevelWidth || pos.x > 1.0 - bevelWidth) {
+                } else if (pos.y < bevelWidth || pos.x > 1.0 - bevelWidth) {
                     finalColor.rgb *= shadowIntensity;
                 }
-                
-                // Add a subtle inner glow for depth
                 float dist = min(min(pos.x, 1.0 - pos.x), min(pos.y, 1.0 - pos.y));
                 float glow = smoothstep(0.0, 0.3, dist);
                 finalColor.rgb *= (0.9 + 0.1 * glow);
-                
                 FragColor = finalColor;
             }
         )";
-        
-        // Compile shaders
+
+        // Fragment shader source for UI (plain color)
+        const char* uiFragmentShaderSource = R"(
+            #version 330 core
+            out vec4 FragColor;
+            uniform vec4 color;
+            void main() {
+                FragColor = color;
+            }
+        )";
+
+        // Compile vertex shader
         GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
         glCompileShader(vertexShader);
-        
-        GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-        glCompileShader(fragmentShader);
-        
-        // Create shader program
-        shaderProgram = glCreateProgram();
-        glAttachShader(shaderProgram, vertexShader);
-        glAttachShader(shaderProgram, fragmentShader);
-        glLinkProgram(shaderProgram);
-        
+
+        // Compile block fragment shader
+        GLuint blockFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(blockFragmentShader, 1, &blockFragmentShaderSource, NULL);
+        glCompileShader(blockFragmentShader);
+
+        // Compile UI fragment shader
+        GLuint uiFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(uiFragmentShader, 1, &uiFragmentShaderSource, NULL);
+        glCompileShader(uiFragmentShader);
+
+        // Create block shader program
+        blockShaderProgram = glCreateProgram();
+        glAttachShader(blockShaderProgram, vertexShader);
+        glAttachShader(blockShaderProgram, blockFragmentShader);
+        glLinkProgram(blockShaderProgram);
+
+        // Create UI shader program
+        uiShaderProgram = glCreateProgram();
+        glAttachShader(uiShaderProgram, vertexShader);
+        glAttachShader(uiShaderProgram, uiFragmentShader);
+        glLinkProgram(uiShaderProgram);
+
         glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
-        
+        glDeleteShader(blockFragmentShader);
+        glDeleteShader(uiFragmentShader);
+
         // Set up vertex data for a quad
         float vertices[] = {
-            0.0f, 0.0f,  // bottom left
-            1.0f, 0.0f,  // bottom right
-            1.0f, 1.0f,  // top right
-            0.0f, 1.0f   // top left
+            0.0f, 0.0f,
+            1.0f, 0.0f,
+            1.0f, 1.0f,
+            0.0f, 1.0f
         };
-        
-        GLuint indices[] = {
-            0, 1, 2,
-            2, 3, 0
-        };
-        
+        GLuint indices[] = { 0, 1, 2, 2, 3, 0 };
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         GLuint EBO;
         glGenBuffers(1, &EBO);
-        
         glBindVertexArray(VAO);
-        
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-        
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
-        
-        // Set up projection matrix
-        glUseProgram(shaderProgram);
+
+        // Set up projection matrix for both shaders
         float projection[16] = {
             2.0f/WINDOW_WIDTH, 0, 0, 0,
             0, 2.0f/WINDOW_HEIGHT, 0, 0,
             0, 0, -1, 0,
             -1, -1, 0, 1
         };
-        GLint projLoc = glGetUniformLocation(shaderProgram, "projection");
-        glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
+        GLint projLocBlock = glGetUniformLocation(blockShaderProgram, "projection");
+        glUseProgram(blockShaderProgram);
+        glUniformMatrix4fv(projLocBlock, 1, GL_FALSE, projection);
+        GLint projLocUI = glGetUniformLocation(uiShaderProgram, "projection");
+        glUseProgram(uiShaderProgram);
+        glUniformMatrix4fv(projLocUI, 1, GL_FALSE, projection);
     }
     
     void spawnNewPiece() {
@@ -374,17 +383,14 @@ public:
     }
     
     void drawRect(float x, float y, float width, float height, const Color& color) {
-        glUseProgram(shaderProgram);
-        
-        GLint offsetLoc = glGetUniformLocation(shaderProgram, "offset");
+        // Default: use UI shader (plain color)
+        glUseProgram(uiShaderProgram);
+        GLint offsetLoc = glGetUniformLocation(uiShaderProgram, "offset");
         glUniform2f(offsetLoc, x, y);
-        
-        GLint scaleLoc = glGetUniformLocation(shaderProgram, "scale");
+        GLint scaleLoc = glGetUniformLocation(uiShaderProgram, "scale");
         glUniform2f(scaleLoc, width, height);
-        
-        GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+        GLint colorLoc = glGetUniformLocation(uiShaderProgram, "color");
         glUniform4f(colorLoc, color.r, color.g, color.b, color.a);
-        
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
@@ -462,6 +468,16 @@ public:
                     drawRect(charX + charWidth - 3, y, 3, charHeight/2, color); // right bottom
                     drawRect(charX + charWidth/2, y + charHeight/2 - 1.5f, charWidth/2, 3, color); // middle right
                     break;
+                case 'X':
+                    // Draw two diagonals for 'X'
+                    drawRect(charX, y, 3, charHeight, color); // left vertical (for thickness)
+                    drawRect(charX + charWidth - 3, y, 3, charHeight, color); // right vertical (for thickness)
+                    // Diagonal from top-left to bottom-right
+                    drawRect(charX + 2, y + 2, charWidth - 4, 3, color); // top
+                    drawRect(charX + 2, y + charHeight - 5, charWidth - 4, 3, color); // bottom
+                    // Central cross
+                    drawRect(charX + 2, y + charHeight/2 - 1.5f, charWidth - 4, 3, color); // middle
+                    break;
                 case ' ':
                     // Space - do nothing
                     break;
@@ -525,22 +541,15 @@ public:
     }
     
     void drawBlock(int x, int y, const Color& color) {
-        glUseProgram(shaderProgram);
-        
-        // Calculate screen position with proper offsets
+        glUseProgram(blockShaderProgram);
         float screenX = x * BLOCK_SIZE + BOARD_OFFSET_X;
         float screenY = (BOARD_HEIGHT - y - 1) * BLOCK_SIZE + BOARD_OFFSET_Y;
-        
-        // Set uniforms
-        GLint offsetLoc = glGetUniformLocation(shaderProgram, "offset");
+        GLint offsetLoc = glGetUniformLocation(blockShaderProgram, "offset");
         glUniform2f(offsetLoc, screenX, screenY);
-        
-        GLint scaleLoc = glGetUniformLocation(shaderProgram, "scale");
-        glUniform2f(scaleLoc, BLOCK_SIZE - 1, BLOCK_SIZE - 1); // -1 for grid lines
-        
-        GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+        GLint scaleLoc = glGetUniformLocation(blockShaderProgram, "scale");
+        glUniform2f(scaleLoc, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+        GLint colorLoc = glGetUniformLocation(blockShaderProgram, "color");
         glUniform4f(colorLoc, color.r, color.g, color.b, color.a);
-        
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
@@ -576,53 +585,47 @@ public:
         // Draw game board border
         Color borderColor(0.7f, 0.7f, 0.7f, 1.0f);
         int borderThickness = 3;
-        
-        // Game board border
-        drawRect(BOARD_OFFSET_X - borderThickness, BOARD_OFFSET_Y - borderThickness, 
-                borderThickness, BOARD_HEIGHT * BLOCK_SIZE + 2 * borderThickness, borderColor);
-        drawRect(BOARD_OFFSET_X + BOARD_WIDTH * BLOCK_SIZE, BOARD_OFFSET_Y - borderThickness, 
-                borderThickness, BOARD_HEIGHT * BLOCK_SIZE + 2 * borderThickness, borderColor);
-        drawRect(BOARD_OFFSET_X - borderThickness, BOARD_OFFSET_Y - borderThickness, 
-                BOARD_WIDTH * BLOCK_SIZE + 2 * borderThickness, borderThickness, borderColor);
-        drawRect(BOARD_OFFSET_X - borderThickness, BOARD_OFFSET_Y + BOARD_HEIGHT * BLOCK_SIZE, 
-                BOARD_WIDTH * BLOCK_SIZE + 2 * borderThickness, borderThickness, borderColor);
+        // Use UI shader for borders
+        drawRect(BOARD_OFFSET_X - borderThickness, BOARD_OFFSET_Y - borderThickness, borderThickness, BOARD_HEIGHT * BLOCK_SIZE + 2 * borderThickness, borderColor);
+        drawRect(BOARD_OFFSET_X + BOARD_WIDTH * BLOCK_SIZE, BOARD_OFFSET_Y - borderThickness, borderThickness, BOARD_HEIGHT * BLOCK_SIZE + 2 * borderThickness, borderColor);
+        drawRect(BOARD_OFFSET_X - borderThickness, BOARD_OFFSET_Y - borderThickness, BOARD_WIDTH * BLOCK_SIZE + 2 * borderThickness, borderThickness, borderColor);
+        drawRect(BOARD_OFFSET_X - borderThickness, BOARD_OFFSET_Y + BOARD_HEIGHT * BLOCK_SIZE, BOARD_WIDTH * BLOCK_SIZE + 2 * borderThickness, borderThickness, borderColor);
         
         // UI Panel settings
         float panelX = BOARD_OFFSET_X + BOARD_WIDTH * BLOCK_SIZE + 20;
         float panelWidth = 180;
-        Color panelBg(0.25f, 0.25f, 0.25f, 1.0f);
-        Color panelBorder(0.6f, 0.6f, 0.6f, 1.0f);
-        Color textColor(0.9f, 0.9f, 0.9f, 1.0f);
-        Color numberColor(1.0f, 1.0f, 1.0f, 1.0f);
-        
+        Color panelBorder(1.0f, 1.0f, 1.0f, 1.0f); // White border only
+        Color textColor(1.0f, 1.0f, 1.0f, 1.0f); // White text
+        Color numberColor(1.0f, 1.0f, 1.0f, 1.0f); // White numbers
+
         // Next piece panel
         float nextPanelY = BOARD_OFFSET_Y + BOARD_HEIGHT * BLOCK_SIZE - 120;
         float nextPanelHeight = 100;
-        
-        drawRect(panelX, nextPanelY, panelWidth, nextPanelHeight, panelBg);
-        drawRect(panelX - 2, nextPanelY - 2, panelWidth + 4, nextPanelHeight + 4, panelBorder);
-        
+
+        // Draw only border (no fill) for UI panels
+        drawRect(panelX, nextPanelY, panelWidth, 3, panelBorder); // Top
+        drawRect(panelX, nextPanelY + nextPanelHeight - 3, panelWidth, 3, panelBorder); // Bottom
+        drawRect(panelX, nextPanelY, 3, nextPanelHeight, panelBorder); // Left
+        drawRect(panelX + panelWidth - 3, nextPanelY, 3, nextPanelHeight, panelBorder); // Right
+
         // Draw "NEXT" title
-        drawText("NEXT", panelX + 10, nextPanelY + nextPanelHeight - 25, 16, textColor);
-        
-        // Draw next piece preview
+        drawText("NEXT", panelX + 10, nextPanelY + nextPanelHeight - 30, 18, textColor);
+
+        // Draw next piece preview (use block shader for blocks)
         float previewX = panelX + 60;
-        float previewY = nextPanelY + 20;
-        int previewSize = 15; // Smaller blocks for preview
-        
+        float previewY = nextPanelY + 25;
+        int previewSize = 18;
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
                 if (nextPiece.shape[i][j] != 0) {
                     float blockX = previewX + j * previewSize;
                     float blockY = previewY + (3 - i) * previewSize;
-                    
-                    // Draw preview block
-                    glUseProgram(shaderProgram);
-                    GLint offsetLoc = glGetUniformLocation(shaderProgram, "offset");
+                    glUseProgram(blockShaderProgram);
+                    GLint offsetLoc = glGetUniformLocation(blockShaderProgram, "offset");
                     glUniform2f(offsetLoc, blockX, blockY);
-                    GLint scaleLoc = glGetUniformLocation(shaderProgram, "scale");
-                    glUniform2f(scaleLoc, previewSize - 1, previewSize - 1);
-                    GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+                    GLint scaleLoc = glGetUniformLocation(blockShaderProgram, "scale");
+                    glUniform2f(scaleLoc, previewSize - 2, previewSize - 2);
+                    GLint colorLoc = glGetUniformLocation(blockShaderProgram, "color");
                     Color previewColor = COLORS[nextPiece.shape[i][j]];
                     glUniform4f(colorLoc, previewColor.r, previewColor.g, previewColor.b, previewColor.a);
                     glBindVertexArray(VAO);
@@ -630,48 +633,30 @@ public:
                 }
             }
         }
-        
+
         // Score panel
-        float scorePanelY = nextPanelY - 130;
-        float scorePanelHeight = 80;
-        
-        drawRect(panelX, scorePanelY, panelWidth, scorePanelHeight, panelBg);
-        drawRect(panelX - 2, scorePanelY - 2, panelWidth + 4, scorePanelHeight + 4, panelBorder);
-        
-        drawText("SCORE", panelX + 10, scorePanelY + scorePanelHeight - 25, 16, textColor);
-        drawNumber(score, panelX + 20, scorePanelY + 15, 20, numberColor);
-        
+        float scorePanelY = nextPanelY - 110;
+        float scorePanelHeight = 70;
+
+        drawRect(panelX, scorePanelY, panelWidth, 3, panelBorder); // Top
+        drawRect(panelX, scorePanelY + scorePanelHeight - 3, panelWidth, 3, panelBorder); // Bottom
+        drawRect(panelX, scorePanelY, 3, scorePanelHeight, panelBorder); // Left
+        drawRect(panelX + panelWidth - 3, scorePanelY, 3, scorePanelHeight, panelBorder); // Right
+
+        drawText("SCORE", panelX + 10, scorePanelY + scorePanelHeight - 28, 18, textColor);
+        drawNumber(score, panelX + 20, scorePanelY + 18, 22, numberColor);
+
         // Lines panel
-        float linesPanelY = scorePanelY - 110;
-        float linesPanelHeight = 80;
-        
-        drawRect(panelX, linesPanelY, panelWidth, linesPanelHeight, panelBg);
-        drawRect(panelX - 2, linesPanelY - 2, panelWidth + 4, linesPanelHeight + 4, panelBorder);
-        
-        drawText("LINES", panelX + 10, linesPanelY + linesPanelHeight - 25, 16, textColor);
-        drawNumber(lines, panelX + 20, linesPanelY + 15, 20, numberColor);
-        
-        // Height panel (current piece height)
-        float heightPanelY = linesPanelY - 110;
-        float heightPanelHeight = 80;
-        
-        drawRect(panelX, heightPanelY, panelWidth, heightPanelHeight, panelBg);
-        drawRect(panelX - 2, heightPanelY - 2, panelWidth + 4, heightPanelHeight + 4, panelBorder);
-        
-        drawText("HEIGHT", panelX + 10, heightPanelY + heightPanelHeight - 25, 16, textColor);
-        
-        // Calculate current height (highest non-empty row)
-        int currentHeight = 0;
-        for (int y = 0; y < BOARD_HEIGHT; y++) {
-            for (int x = 0; x < BOARD_WIDTH; x++) {
-                if (board[y][x] != 0) {
-                    currentHeight = std::max(currentHeight, BOARD_HEIGHT - y);
-                    break;
-                }
-            }
-        }
-        
-        drawNumber(currentHeight, panelX + 20, heightPanelY + 15, 20, numberColor);
+        float linesPanelY = scorePanelY - 90;
+        float linesPanelHeight = 70;
+
+        drawRect(panelX, linesPanelY, panelWidth, 3, panelBorder); // Top
+        drawRect(panelX, linesPanelY + linesPanelHeight - 3, panelWidth, 3, panelBorder); // Bottom
+        drawRect(panelX, linesPanelY, 3, linesPanelHeight, panelBorder); // Left
+        drawRect(panelX + panelWidth - 3, linesPanelY, 3, linesPanelHeight, panelBorder); // Right
+
+        drawText("LINES", panelX + 10, linesPanelY + linesPanelHeight - 28, 18, textColor);
+        drawNumber(lines, panelX + 20, linesPanelY + 18, 22, numberColor);
     }
     
     bool isGameOver() const { return gameOver; }
