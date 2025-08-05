@@ -761,6 +761,24 @@ public:
             drawText("PRESS SPACE TO RESUME", WINDOW_WIDTH / 2 - 160, WINDOW_HEIGHT / 2 - 30, 18, resumeColor);
         }
         
+        // Show game over screen
+        if (gameOver) {
+            Color overlayColor(0.0f, 0.0f, 0.0f, 0.8f);
+            drawRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, overlayColor);
+            
+            Color gameOverColor(1.0f, 0.0f, 0.0f, 1.0f);
+            drawText("GAME OVER", WINDOW_WIDTH / 2 - 90, WINDOW_HEIGHT / 2 + 50, 25, gameOverColor);
+            
+            Color scoreColor(1.0f, 1.0f, 1.0f, 1.0f);
+            drawText("SCORE:", WINDOW_WIDTH / 2 - 75, WINDOW_HEIGHT / 2, 20, scoreColor);
+            drawNumber(score, WINDOW_WIDTH / 2 + 20, WINDOW_HEIGHT / 2, 20, scoreColor);
+
+            drawText("LINES CLEARED:", WINDOW_WIDTH / 2 - 125, WINDOW_HEIGHT / 2 - 50, 20, scoreColor);
+            drawNumber(lines, WINDOW_WIDTH / 2 + 115, WINDOW_HEIGHT / 2 - 50, 20, scoreColor);
+            
+            Color restartColor(1.0f, 1.0f, 0.0f, 1.0f);
+            drawText("PRESS R TO RESTART", WINDOW_WIDTH / 2 - 140, WINDOW_HEIGHT / 2 - 100, 18, restartColor);
+        }
     }
     
     bool isGameOver() const { return gameOver; }
