@@ -118,6 +118,8 @@ private:
     int score;
     int lines;
     bool gameOver;
+    bool paused;
+    bool gameStarted;
 
     GLuint blockShaderProgram; // bevel effect for blocks
     GLuint uiShaderProgram;    // plain color for UI
@@ -126,7 +128,7 @@ private:
 public:
     TetrisGame() : board(BOARD_HEIGHT, std::vector<int>(BOARD_WIDTH, 0)),
                    currentPiece(0), nextPiece(0), rng(std::chrono::steady_clock::now().time_since_epoch().count()),
-                   pieceDist(0, 6), lastFall(0), fallSpeed(1.0), score(0), lines(0), gameOver(false) {
+                   pieceDist(0, 6), lastFall(0), fallSpeed(1.0), score(0), lines(0), gameOver(false), paused(false), gameStarted(false) {
         spawnNewPiece();
         generateNextPiece();
         initOpenGL();
@@ -321,7 +323,7 @@ public:
     }
     
     void update(double currentTime) {
-        if (gameOver) return;
+        if (gameOver || paused || !gameStarted) return;
         
         if (currentTime - lastFall > fallSpeed) {
             if (!checkCollision(currentPiece, 0, 1)) {
@@ -334,19 +336,19 @@ public:
     }
     
     void moveLeft() {
-        if (!gameOver && !checkCollision(currentPiece, -1, 0)) {
+        if (!gameOver && !paused && gameStarted && !checkCollision(currentPiece, -1, 0)) {
             currentPiece.x--;
         }
     }
     
     void moveRight() {
-        if (!gameOver && !checkCollision(currentPiece, 1, 0)) {
+        if (!gameOver && !paused && gameStarted && !checkCollision(currentPiece, 1, 0)) {
             currentPiece.x++;
         }
     }
     
     void rotate() {
-        if (!gameOver) {
+        if (!gameOver && !paused && gameStarted) {
             TetrisPiece testPiece = currentPiece;
             testPiece.rotate();
             if (!checkCollision(testPiece, 0, 0)) {
@@ -356,7 +358,7 @@ public:
     }
     
     void drop() {
-        if (!gameOver) {
+        if (!gameOver && !paused && gameStarted) {
             while (!checkCollision(currentPiece, 0, 1)) {
                 currentPiece.y++;
             }
@@ -365,7 +367,7 @@ public:
     }
     
     void softDrop() {
-        if (!gameOver && !checkCollision(currentPiece, 0, 1)) {
+        if (!gameOver && !paused && gameStarted && !checkCollision(currentPiece, 0, 1)) {
             currentPiece.y++;
             score += 1; // Small bonus for soft drop
         }
@@ -377,9 +379,26 @@ public:
         lines = 0;
         fallSpeed = 1.0;
         gameOver = false;
+        paused = false;
+        gameStarted = true;
         lastFall = glfwGetTime();
         spawnNewPiece();
         generateNextPiece();
+    }
+    
+    void startGame() {
+        gameStarted = true;
+        lastFall = glfwGetTime();
+    }
+    
+    void togglePause() {
+        if (!gameOver) {
+            paused = !paused;
+            if (!paused) {
+                // Resume the timer to prevent instant drop when unpausing
+                lastFall = glfwGetTime();
+            }
+        }
     }
     
     void drawRect(float x, float y, float width, float height, const Color& color) {
@@ -465,6 +484,78 @@ public:
                     drawRect(charX, y, charWidth, strokeWidth, color); // bottom
                     drawRect(charX + charWidth/2 - strokeWidth/2, y, strokeWidth, charHeight, color); // middle vertical
                     drawRect(charX, y + charHeight - strokeWidth, charWidth, strokeWidth, color); // top
+                    break;
+                case 'P':
+                    drawRect(charX, y, strokeWidth, charHeight, color); // left
+                    drawRect(charX + strokeWidth, y + charHeight - strokeWidth, charWidth - strokeWidth, strokeWidth, color); // top
+                    drawRect(charX + charWidth - strokeWidth, y + charHeight/2, strokeWidth, charHeight/2 - strokeWidth, color); // right top
+                    drawRect(charX + strokeWidth, y + charHeight/2 - strokeWidth/2, charWidth - strokeWidth, strokeWidth, color); // middle
+                    break;
+                case 'A':
+                    drawRect(charX, y, strokeWidth, charHeight, color); // left
+                    drawRect(charX + charWidth - strokeWidth, y, strokeWidth, charHeight, color); // right
+                    drawRect(charX + strokeWidth, y + charHeight - strokeWidth, charWidth - 2*strokeWidth, strokeWidth, color); // top
+                    drawRect(charX + strokeWidth, y + charHeight/2 - strokeWidth/2, charWidth - 2*strokeWidth, strokeWidth, color); // middle
+                    break;
+                case 'U':
+                    drawRect(charX, y + strokeWidth, strokeWidth, charHeight - strokeWidth, color); // left
+                    drawRect(charX + charWidth - strokeWidth, y + strokeWidth, strokeWidth, charHeight - strokeWidth, color); // right
+                    drawRect(charX + strokeWidth, y, charWidth - 2*strokeWidth, strokeWidth, color); // bottom
+                    break;
+                case 'D':
+                    drawRect(charX, y, strokeWidth, charHeight, color); // left
+                    drawRect(charX + strokeWidth, y + charHeight - strokeWidth, charWidth - strokeWidth, strokeWidth, color); // top
+                    drawRect(charX + strokeWidth, y, charWidth - strokeWidth, strokeWidth, color); // bottom
+                    drawRect(charX + charWidth - strokeWidth, y + strokeWidth, strokeWidth, charHeight - 2*strokeWidth, color); // right
+                    break;
+                case 'G':
+                    drawRect(charX, y + strokeWidth, strokeWidth, charHeight - 2*strokeWidth, color); // left
+                    drawRect(charX, y, charWidth, strokeWidth, color); // bottom
+                    drawRect(charX, y + charHeight - strokeWidth, charWidth, strokeWidth, color); // top
+                    drawRect(charX + charWidth - strokeWidth, y, strokeWidth, charHeight/2, color); // right bottom
+                    drawRect(charX + charWidth/2, y + charHeight/2 - strokeWidth/2, charWidth/2, strokeWidth, color); // middle right
+                    break;
+                case 'M':
+                    drawRect(charX, y, strokeWidth, charHeight, color); // left
+                    drawRect(charX + charWidth - strokeWidth, y, strokeWidth, charHeight, color); // right
+                    drawRect(charX + charWidth/2 - strokeWidth/2, y + charHeight/2, strokeWidth, charHeight/2, color); // middle
+                    drawRect(charX + strokeWidth, y + charHeight - strokeWidth, strokeWidth, strokeWidth, color); // top left diag
+                    drawRect(charX + charWidth - 2*strokeWidth, y + charHeight - strokeWidth, strokeWidth, strokeWidth, color); // top right diag
+                    break;
+                case 'V':
+                    drawRect(charX, y + charHeight/3, strokeWidth, 2*charHeight/3, color); // left
+                    drawRect(charX + charWidth - strokeWidth, y + charHeight/3, strokeWidth, 2*charHeight/3, color); // right
+                    drawRect(charX + charWidth/2 - strokeWidth/2, y, strokeWidth, charHeight/3, color); // bottom middle
+                    break;
+                case 'F':
+                    drawRect(charX, y, strokeWidth, charHeight, color); // left
+                    drawRect(charX, y + charHeight - strokeWidth, charWidth, strokeWidth, color); // top
+                    drawRect(charX, y + charHeight/2 - strokeWidth/2, charWidth * 0.75f, strokeWidth, color); // middle
+                    break;
+                case 'H':
+                    drawRect(charX, y, strokeWidth, charHeight, color); // left
+                    drawRect(charX + charWidth - strokeWidth, y, strokeWidth, charHeight, color); // right
+                    drawRect(charX + strokeWidth, y + charHeight/2 - strokeWidth/2, charWidth - 2*strokeWidth, strokeWidth, color); // middle
+                    break;
+                case 'W':
+                    drawRect(charX, y, strokeWidth, charHeight, color); // left
+                    drawRect(charX + charWidth - strokeWidth, y, strokeWidth, charHeight, color); // right
+                    drawRect(charX + charWidth/2 - strokeWidth/2, y, strokeWidth, charHeight/2, color); // middle bottom
+                    drawRect(charX + charWidth/4 - strokeWidth/2, y + charHeight/3, strokeWidth, 2*charHeight/3, color); // left middle
+                    drawRect(charX + 3*charWidth/4 - strokeWidth/2, y + charHeight/3, strokeWidth, 2*charHeight/3, color); // right middle
+                    break;
+                case 'B':
+                    drawRect(charX, y, strokeWidth, charHeight, color); // left
+                    drawRect(charX + strokeWidth, y + charHeight - strokeWidth, charWidth - strokeWidth, strokeWidth, color); // top
+                    drawRect(charX + strokeWidth, y, charWidth - strokeWidth, strokeWidth, color); // bottom
+                    drawRect(charX + strokeWidth, y + charHeight/2 - strokeWidth/2, charWidth - strokeWidth, strokeWidth, color); // middle
+                    drawRect(charX + charWidth - strokeWidth, y + charHeight/2, strokeWidth, charHeight/2 - strokeWidth, color); // right top
+                    drawRect(charX + charWidth - strokeWidth, y + strokeWidth, strokeWidth, charHeight/2 - strokeWidth, color); // right bottom
+                    break;
+                case 'Y':
+                    drawRect(charX, y + charHeight/2, strokeWidth, charHeight/2, color); // left top
+                    drawRect(charX + charWidth - strokeWidth, y + charHeight/2, strokeWidth, charHeight/2, color); // right top
+                    drawRect(charX + charWidth/2 - strokeWidth/2, y, strokeWidth, charHeight/2, color); // middle bottom
                     break;
                 case ' ':
                     // Space - do nothing
@@ -645,9 +736,36 @@ public:
 
         drawText("LINES", panelX + 10, linesPanelY + linesPanelHeight - 28, 18, textColor);
         drawNumber(lines, panelX + 20, linesPanelY + 12, 22, numberColor);
+        
+        // Show start screen if game hasn't started
+        if (!gameStarted) {
+            Color overlayColor(0.0f, 0.0f, 0.0f, 0.8f);
+            drawRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, overlayColor);
+            
+            Color titleColor(1.0f, 1.0f, 1.0f, 1.0f);
+            drawText("TETRIS", WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT / 2 + 50, 40, titleColor);
+            
+            Color startColor(1.0f, 1.0f, 0.0f, 1.0f);
+            drawText("PRESS SPACE TO START", WINDOW_WIDTH / 2 - 150, WINDOW_HEIGHT / 2 - 25, 18, startColor);
+        }
+        
+        // Show pause indicator if game is paused
+        if (paused && gameStarted) {
+            Color overlayColor(0.0f, 0.0f, 0.0f, 0.7f);
+            drawRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, overlayColor);
+            
+            Color pauseColor(1.0f, 1.0f, 0.0f, 1.0f);
+            drawText("PAUSED", WINDOW_WIDTH / 2 - 70, WINDOW_HEIGHT / 2 + 20, 25, pauseColor);
+            
+            Color resumeColor(0.9f, 0.9f, 0.9f, 1.0f);
+            drawText("PRESS SPACE TO RESUME", WINDOW_WIDTH / 2 - 160, WINDOW_HEIGHT / 2 - 30, 18, resumeColor);
+        }
+        
     }
     
     bool isGameOver() const { return gameOver; }
+    bool isPaused() const { return paused; }
+    bool hasStarted() const { return gameStarted; }
     int getScore() const { return score; }
     int getLines() const { return lines; }
 };
@@ -679,9 +797,14 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
                 game->drop();
                 break;
             case GLFW_KEY_R:
-                if (game->isGameOver()) {
-                    game->restart();
-                    gameOverPrinted = false; // Reset the flag so message can be shown again
+                game->restart();
+                gameOverPrinted = false; // Reset the flag so message can be shown again
+                break;
+            case GLFW_KEY_SPACE:
+                if (!game->hasStarted()) {
+                    game->startGame();
+                } else {
+                    game->togglePause();
                 }
                 break;
             case GLFW_KEY_ESCAPE:
@@ -737,6 +860,7 @@ int main() {
     std::cout << "S/Down Arrow  - Soft Drop" << std::endl;
     std::cout << "W/Up Arrow    - Rotate" << std::endl;
     std::cout << "Enter         - Hard Drop" << std::endl;
+    std::cout << "Space         - Pause/Resume" << std::endl;
     std::cout << "R             - Restart (when game over)" << std::endl;
     std::cout << "ESC           - Exit" << std::endl;
     
@@ -755,6 +879,19 @@ int main() {
         
         // Swap buffers
         glfwSwapBuffers(window);
+        
+        // Check for pause state
+        static bool pausePrinted = false;
+        if (!game->isGameOver()) {
+            if (game->isPaused() && !pausePrinted) {
+                std::cout << "\n=== GAME PAUSED ===" << std::endl;
+                std::cout << "Press SPACE to resume" << std::endl;
+                pausePrinted = true;
+            } else if (!game->isPaused() && pausePrinted) {
+                std::cout << "Game resumed!" << std::endl;
+                pausePrinted = false;
+            }
+        }
         
         // Check for game over
         if (game->isGameOver()) {
