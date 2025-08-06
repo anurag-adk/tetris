@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "C/C++: g++.exe build active file",
+      "type": "shell",
+      "command": "REPLACE_WITH_YOUR_PATH_TO_g++.exe",
+      "args": [
+        "-g",
+        "-o",
+        "main.exe",
+        "-std=c++17",
+        "-I${workspaceFolder}/include",
+        "-L${workspaceFolder}/lib",
+        "${workspaceFolder}/src/main.cpp",
+        "${workspaceFolder}/src/GameConstants.cpp",
+        "${workspaceFolder}/src/TetrisPiece.cpp",
+        "${workspaceFolder}/src/Renderer.cpp",
+        "${workspaceFolder}/src/TetrisGame.cpp",
+        "${workspaceFolder}/src/glad.c",
+        "-lglfw3dll",
+        "-lopengl32",
+        "-lgdi32",
+        "-luser32",
+        "-lkernel32"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": ["$gcc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "compiler: REPLACE_WITH_YOUR_PATH_TO_g++.exe"
+    }
+  ]
+}
