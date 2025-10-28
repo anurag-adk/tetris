@@ -1,2 +1,8 @@
 .vscode/
+include/
+lib/
+
 *.exe
+
+glfw3.dll
+/src/glad.c

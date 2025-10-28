@@ -24,42 +24,52 @@ Tetris is a classic block-stacking game recreated using C++ and OpenGL as a part
 ## 📂 Folder Structure
 
 <pre>📁 tetris/
-├── 📁 include/
-│   ├── 📁 glad/
-│   ├── 📁 GLFW/
-│   └── 📁 KHR/
-├── 📁 lib/
 ├── 📁 src/
 │   ├── 📁 headers/
-│   ├── glad.c
 │   ├── main.cpp
 │   ├── GameConstants.cpp
 │   ├── Renderer.cpp
 │   ├── TetrisPiece.cpp
 │   └── TetrisGame.cpp
 ├── .gitignore
-├── glfw3.dll
 ├── sample.tasks.json
 └── README.md
 </pre>
 
 ## ⚙️ Setup on Your Device (VS Code - Windows)
 
-1. Clone the repository to your local machine:
+1. Setup OpenGL on Your Device:
+
+   ```bash
+   git clone https://github.com/anurag-adk/opengl-setup.git
+   cd opengl-setup
+   ```
+
+2. Clone the Tetris project:
+
    ```bash
    git clone https://github.com/anurag-adk/tetris.git
-   cd tetris
    ```
-2. Create a `.vscode` directory in the root of the project:
+
+3. Copy the game files:
+
    ```bash
-   mkdir .vscode
+   # Move all Tetris game files from tetris/src/ to src/
+   mv tetris/src/* src/
    ```
-3. Copy the contents of `sample.tasks.json` into `.vscode/tasks.json`:
+
+4. Copy the contents of `sample.tasks.json` into `.vscode/tasks.json`:
+
    ```bash
-   mv sample.tasks.json .vscode/tasks.json
+   mv tetris/sample.tasks.json .vscode/tasks.json
    ```
-4. Replace `REPLACE_WITH_YOUR_PATH_TO_g++.exe` with the full path to your `g++.exe`
-5. Press `Ctrl + Shift + B` in VS Code
-6. If compilation is successful, an executable `main.exe` will be created. Run it and play Tetris!
+
+5. Replace `REPLACE_WITH_YOUR_PATH_TO_g++.exe` in `tasks.json` with the full path to your `g++.exe`
+6. Remove tetris directory (_optional_):
+   ```bash
+   rm -rf tetris
+   ```
+7. Build the project, simply press `Ctrl + Shift + B` in VS Code from root directory.
+8. If compilation is successful, an executable `main.exe` will be created. Run it and play Tetris!
 
 ## 🙏 Thank You
